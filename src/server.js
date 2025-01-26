@@ -1,53 +1,68 @@
 import http from "http";
-import WebSocket from "ws";
+import SocketIO from "socket.io";
 import express from "express";
 
 const app = express();
 
-// tell Express to use Pug as the template engine for rendering .pug files
 app.set('view engine', 'pug');
-// specify the directory where .pug templates are stored
 app.set("views", __dirname + "/views");
-// map requests to /public in the URL to the public folder in your file system
 app.use("/public", express.static(__dirname + "/public"));
-// create a route handler to render home.pug
 app.get("/", (req, res) => res.render("home"));
 app.get("/*", (req, res) => res.redirect("/"));
 
-
 const handleListen = () => console.log("Listening on http://localhost:3000");
-// app.listen(3000, handleListen);
 
-// make a HTTP server with the Express app as request listener
 const server = http.createServer(app);
-// make a WS server on top of the HTTP server
-const wss = new WebSocket.Server({ server });
-// both protocols listen to the same port now
+const wsServer = SocketIO(server);
 
+function publicRooms() {
+    // const sids = wsServer.sockets.adapter.sids;
+    // const rooms = wsServer.sockets.adapter.rooms;
+    const {
+        sockets: {
+            adapter: { sids, rooms },
+        },
+    } = wsServer;
 
-const sockets = [];
-
-wss.on("connection", (socket) => {
-    // save each browser that connects to this server in an array 
-    sockets.push(socket); 
-    socket["nickname"] = "Anonymous";
-
-    console.log("Connected to Browser");
-    socket.on("close", () => console.log("Disconnected from the Browser"));
-
-    socket.on("message", (message) => { // send a msg to all browsers connected
-        const parsed = JSON.parse(message); // turn the stringified message back into JSON object
-        console.log(parsed);
-
-        if (parsed.type == "new_message") { // if received an actual message in the JSON object, broadcast it to all connected sockets
-            sockets.forEach((aSocket) => 
-                aSocket.send(`${socket.nickname}: ${parsed.payload.toString('utf8')}`)
-            );
-        } else if (parsed.type == "nickname") { // if received a nickname in the JSON object, just save it in the currently connected socket object (the browser from which this nickname message was sent)
-            socket["nickname"] = parsed.payload.toString('utf8');
+    const publicRooms = [];
+    rooms.forEach((_, key) => {
+        if (sids.get(key) === undefined) {
+            publicRooms.push(key);
         }
-        
     });
+    return publicRooms;
+    
+}
+
+wsServer.on("connection", socket => {
+    socket["nickname"] = "Anonymous";
+    socket.on("enter_room", (roomName, done) => {
+        // join a room
+        socket.join(roomName);
+        done();
+
+        // send an event called "welcome" to everyone in the room,
+        // except yourself (the user that just joined)
+        socket.to(roomName).emit("welcome", socket.nickname);
+        
+        // send an event called "room_change" to everyone in all rooms (all sockets)
+        wsServer.sockets.emit("room_change", publicRooms());
+    });
+
+    socket.on("disconnecting", () => {
+        socket.rooms.forEach(room => socket.to(room).emit("bye", socket.nickname));
+    });
+
+    socket.on("disconnect", () => {
+        wsServer.sockets.emit("room_change", publicRooms());
+    });
+
+    socket.on("new_message", (msg, room, done) => {
+        socket.to(room).emit("new_message", `${socket.nickname}: ${msg}`);
+        done();
+    }); 
+
+    socket.on("nickname", (nickname) => (socket["nickname"] = nickname) );
 });
 
 server.listen(3000, handleListen);
