@@ -1,14 +1,22 @@
 const socket = io();
 
+const welcome = document.getElementById("welcome");
+const call = document.getElementById("call");
+// at first, the call screen is hidden and only show welcome screen
+call.hidden = true;
+
+// Video Chat (with MediaStream API)
 const myFace = document.getElementById("myFace");
 const muteButton = document.getElementById("mute");
 const cameraButton = document.getElementById("camera");
 const camerasSelect = document.getElementById("cameras");
 
+
 let myStream;
 //default state is not muted and camera is on
 let muted = false;
 let cameraOff = false;
+let roomName = "";
 
 async function getCameras() {
     try {
@@ -63,8 +71,6 @@ async function getMedia(deviceId) {
     }
 }
 
-getMedia();
-
 function handleMuteClick() {
     // Get list of audio tracks from the stream and set to opposite its curr state
     myStream.getAudioTracks().forEach((track) => {track.enabled = !track.enabled});
@@ -91,7 +97,7 @@ function handleCameraClick() {
         cameraButton.innerText = "Turn Camera Off"; // you can turn it back off
     } else {
         cameraOff = true;
-        muteButton.innerText = "Mute";
+        cameraButton.innerText = "Turn Camera On"; 
     }
 }
 
@@ -102,3 +108,27 @@ async function handleCameraChange() {
 muteButton.addEventListener("click", handleMuteClick);
 cameraButton.addEventListener("click", handleCameraClick);
 camerasSelect.addEventListener("input", handleCameraChange);
+
+
+// Welcome Form (join room)
+const welcomeForm = welcome.querySelector("form");
+
+function startMedia() {
+    welcome.hidden = true;
+    call.hidden = false;
+    getMedia();
+}
+
+function handleWelcomeSubmit(event) {
+    event.preventDefault();
+    const input = welcomeForm.querySelector("input");
+    // send the room name and callback function to the server
+    socket.emit("join_room", input.value, startMedia); 
+    roomName = input.value; // save the name of the room
+    input.value = "";
+}
+welcomeForm.addEventListener("submit", handleWelcomeSubmit);
+
+socket.on("welcome", () =>{
+    console.log("Someone joined");
+});
