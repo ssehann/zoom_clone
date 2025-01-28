@@ -13,7 +13,6 @@ app.get("/*", (req, res) => res.redirect("/"));
 const server = http.createServer(app);
 const wsServer = SocketIO(server);
 
-
 wsServer.on("connection", socket => {
     socket.on("join_room", (roomName) => {
         socket.join(roomName);
@@ -25,6 +24,9 @@ wsServer.on("connection", socket => {
     socket.on("answer", (answer, roomName) => {
         socket.to(roomName).emit("answer", answer);
     });
+    socket.on("ice", (ice, roomName) => {
+        socket.to(roomName).emit("ice", ice)
+    })
 })
 
 const handleListen = () => console.log("Listening on http://localhost:3000");

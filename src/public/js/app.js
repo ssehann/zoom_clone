@@ -103,6 +103,16 @@ function handleCameraClick() {
 
 async function handleCameraChange() {
     await getMedia(camerasSelect.value);
+
+    // Make sure camera change works for peer's screen as well
+    if (myPeerConnection) {
+        const videoTrack = myStream.getVideoTracks()[0];
+        const videoSender = myPeerConnection.getSenders().find((sender) => sender.track.kind == "video");
+
+        // Replace the video track being sent through the peer connection
+        // with the new video track (new camera) from my stream
+        videoSender.replaceTrack(videoTrack);
+    }
 }
 
 muteButton.addEventListener("click", handleMuteClick);
@@ -133,31 +143,70 @@ welcomeForm.addEventListener("submit", handleWelcomeSubmit);
 
 // Socket Code
 
+// OFFERS AND ANSWERS
 // Browser A (local offer) -> Server (event "offer")
 socket.on("welcome", async () => {
     const offer = await myPeerConnection.createOffer();
-    // this is description of the browser for the other peers to connect
     myPeerConnection.setLocalDescription(offer);
+    
     socket.emit("offer", offer, roomName);
-    // tell server offer and room name so it can send info to the other peer
+    console.log("sent the offer");
 });
 
 // -> Browser B (remote offer, local answer) -> Server (event "answer")
 socket.on("offer", async (offer) => {
+    console.log("received the offer");
     myPeerConnection.setRemoteDescription(offer);
+
     const answer = await myPeerConnection.createAnswer();
     myPeerConnection.setLocalDescription(answer);
+
     socket.emit("answer", answer, roomName);
+    console.log("sent the answer");
 });
 
 // -> Browser A (remote answer)
 socket.on("answer", (answer) => {
+    console.log("received the answer");
     myPeerConnection.setRemoteDescription(answer);
 });
 
+// ICE CANDIDATES
+socket.on("ice", (ice) => {
+    console.log("received ice candidate");
+    myPeerConnection.addIceCandidate(ice);
+});
+
+
 // RTC Code
 
+function handleIce(data) {
+    console.log("sent ice candidate");
+    socket.emit("ice", data.candidate, roomName);
+}
+
+function handleAddStream(data) {
+    console.log("got an event from my peer");
+    // console.log("peer's stream", data.stream);
+    // console.log("my stream", myStream);
+    const peerFace = document.getElementById("peerFace");
+    peerFace.srcObject = data.stream
+
+}
+
 function makeConnection() {
-    myPeerConnection = new RTCPeerConnection();
+    myPeerConnection = new RTCPeerConnection(
+        { iceServers: [ // STUN server
+            { urls: [
+                "stun:stun.l.google.com:19302",
+                "stun:stun.l.google.com:19302",
+                "stun:stun.l.google.com:19302",
+                "stun:stun.l.google.com:19302",
+                "stun:stun.l.google.com:19302"
+            ]}
+        ]}
+    );
+    myPeerConnection.addEventListener("icecandidate", handleIce);
+    myPeerConnection.addEventListener("addstream", handleAddStream);
     myStream.getTracks().forEach((track) => myPeerConnection.addTrack(track, myStream));
 }
