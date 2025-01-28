@@ -4,22 +4,87 @@ html(lang="en")
         meta(charset="UTF-8")
         meta(http-equiv="X-UA-Compatible", content="IE=edge")
         meta(name="viewport", content="width=device-width, initial-scale=1.0")
-        title Zoom
-        link(rel="stylesheet", href="https://unpkg.com/mvp.css")
+        title Zoom Clone
+        link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/mvp.css/1.12/mvp.css")
+        style.
+            body {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                background-color: #1e1e2f;
+                color: #fff;
+                font-family: Arial, sans-serif;
+            }
+            header {
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            #welcome, #call {
+                background: #2a2a3a;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                text-align: center;
+                width: 100%;
+                max-width: 500px;
+            }
+            input, button, select {
+                width: 100%;
+                margin-top: 10px;
+                padding: 10px;
+                border: none;
+                border-radius: 5px;
+                font-size: 16px;
+            }
+            button {
+                cursor: pointer;
+                background: #007bff;
+                color: white;
+                transition: 0.3s;
+            }
+            button:hover {
+                background: #0056b3;
+            }
+            #call {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+            #myStream, #peerStream {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+            video {
+                border-radius: 10px;
+                border: 2px solid white;
+                width: 100%;
+                max-width: 400px;
+            }
     body
         header
-            h1 Zoom
+            h1 Zoom Clone
         main
             div#welcome
+                h2 Join a Room
                 form 
-                    input(placeholder="room name" required, type="text")
+                    input(placeholder="Enter Room Name", required, type="text")
                     button Enter Room
             div#call
+                h2 Video Call
                 div#myStream
-                    video#myFace(autoplay, playsinline, width="400", height="400")
-                    button#mute Mute
-                    button#camera Turn Camera Off
-                    select#cameras
-                    video#peerFace(autoplay, playsinline, width="400", height="400")
+                    h3 You
+                    video#myFace(autoplay, playsinline)
+                    div
+                        button#mute Mute
+                        button#camera Turn Camera Off
+                        select#cameras
+                div#peerStream
+                    h3 Callee
+                    video#peerFace(autoplay, playsinline)
         script(src="/socket.io/socket.io.js")
         script(src="/public/js/app.js") 

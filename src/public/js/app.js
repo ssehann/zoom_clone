@@ -191,7 +191,6 @@ function handleAddStream(data) {
     // console.log("my stream", myStream);
     const peerFace = document.getElementById("peerFace");
     peerFace.srcObject = data.stream
-
 }
 
 function makeConnection() {
