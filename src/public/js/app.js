@@ -1,9 +1,11 @@
 const socket = io();
 
+// at first, the call + chat screen is hidden and only show welcome screen
 const welcome = document.getElementById("welcome");
 const call = document.getElementById("call");
-// at first, the call screen is hidden and only show welcome screen
+const chat = document.getElementById("chat-container");
 call.hidden = true;
+chat.hidden = true;
 
 // Video Call Code (w/ MediaStream API)
 const myFace = document.getElementById("myFace");
@@ -11,12 +13,18 @@ const muteButton = document.getElementById("mute");
 const cameraButton = document.getElementById("camera");
 const camerasSelect = document.getElementById("cameras");
 
+// Chat Code (w/ RTCDataChannel API)
+const messageInput = document.getElementById("messageInput");
+const sendMessageButton = document.getElementById("sendMessage");
+const messageContainer = document.getElementById("messages");
+
 //default state is unmuted + camera on
 let myStream;
 let muted = false;
 let cameraOff = false;
 let roomName = "";
 let myPeerConnection;
+let dataChannel;
 
 async function getCameras() {
     try {
@@ -126,6 +134,7 @@ const welcomeForm = welcome.querySelector("form");
 async function initCall() {
     welcome.hidden = true;
     call.hidden = false;
+    chat.hidden = false;
     await getMedia();
     makeConnection();
 }
@@ -146,6 +155,9 @@ welcomeForm.addEventListener("submit", handleWelcomeSubmit);
 // OFFERS AND ANSWERS
 // Browser A (local offer) -> Server (event "offer")
 socket.on("welcome", async () => {
+    dataChannel = myPeerConnection.createDataChannel("chat");
+    dataChannel.onmessage = event => displayMessage("Peer", event.data);
+
     const offer = await myPeerConnection.createOffer();
     myPeerConnection.setLocalDescription(offer);
     
@@ -155,6 +167,12 @@ socket.on("welcome", async () => {
 
 // -> Browser B (remote offer, local answer) -> Server (event "answer")
 socket.on("offer", async (offer) => {
+    myPeerConnection.ondatachannel = (event) => {
+        dataChannel = event.channel;
+        dataChannel.onopen = () => console.log("Data channel is open (receiver)");
+        dataChannel.onmessage = (event) => displayMessage("Peer", event.data);
+    };
+
     console.log("received the offer");
     myPeerConnection.setRemoteDescription(offer);
 
@@ -200,7 +218,6 @@ function makeConnection() {
                 "stun:stun.l.google.com:19302",
                 "stun:stun.l.google.com:19302",
                 "stun:stun.l.google.com:19302",
-                "stun:stun.l.google.com:19302",
                 "stun:stun.l.google.com:19302"
             ]}
         ]}
@@ -209,3 +226,17 @@ function makeConnection() {
     myPeerConnection.addEventListener("addstream", handleAddStream);
     myStream.getTracks().forEach((track) => myPeerConnection.addTrack(track, myStream));
 }
+
+function displayMessage(sender, message) {
+    const msg = document.createElement("p");
+    msg.textContent = `${sender}: ${message}`;
+    messageContainer.appendChild(msg);
+}
+
+sendMessageButton.addEventListener("click", () => {
+    const message = messageInput.value.trim();
+    if (message === "" || !dataChannel || dataChannel.readyState !== "open") return;
+    dataChannel.send(message);
+    displayMessage("You", message);
+    messageInput.value = "";
+});

@@ -65,6 +65,24 @@ html(lang="en")
                 width: 100%;
                 max-width: 400px;
             }
+            #chat-container {
+                width: 100%;
+                max-width: 500px;
+                margin-top: 20px;
+                background: #333;
+                padding: 15px;
+                border-radius: 10px;
+            }
+            #messages {
+                height: 200px;
+                overflow-y: auto;
+                background: #222;
+                padding: 10px;
+                border-radius: 5px;
+            }
+            #fileInput {
+                margin-top: 10px;
+            }
     body
         header
             h1 Zoom Clone
@@ -84,7 +102,15 @@ html(lang="en")
                         button#camera Turn Camera Off
                         select#cameras
                 div#peerStream
-                    h3 Callee
+                    h3 Peer
                     video#peerFace(autoplay, playsinline)
+
+            // Chat and File Sharing
+            div#chat-container
+                h3 Chat and Share
+                div#messages
+                input#messageInput(type="text", placeholder="Type a message...")
+                button#sendMessage Send Message
+
         script(src="/socket.io/socket.io.js")
         script(src="/public/js/app.js") 
